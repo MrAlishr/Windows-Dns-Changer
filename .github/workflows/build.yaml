@@ -1,10 +1,7 @@
-name: Build Application with PyInstaller
+name: Build, Package, and Release Application
 
 on:
   push:
-    branches:
-      - master
-  pull_request:
     branches:
       - master
 
@@ -31,8 +28,58 @@ jobs:
       run: |
         pyinstaller --onefile --windowed --icon=assets\app.ico --add-data "assets;assets" --name "DNS Changer" gui.py
 
-    - name: Upload Artifacts
+    - name: Package Application
+      run: |
+        mkdir package
+        Move-Item "dist/DNS Changer.exe" "package/DNS Changer.exe"
+        Compress-Archive -Path package -DestinationPath "package/DNS_Changer.zip"
+
+    - name: Upload Build Artifact
       uses: actions/upload-artifact@v3
       with:
-        name: DNS-Changer-Executable
-        path: dist/DNS Changer.exe
+        name: DNS-Changer-Package
+        path: package/DNS_Changer.zip
+
+  release:
+    needs: build
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v3 # Ensure this is included to have .git available
+
+      - name: Download Build Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: DNS-Changer-Package
+          path: dist
+
+      - name: Get Last Commit Message
+        id: get_commit
+        shell: pwsh
+        run: |
+          $commit_message = git log -1 --pretty=%B
+          echo "COMMIT_MESSAGE<<EOF" >> $env:GITHUB_ENV
+          echo "$commit_message" >> $env:GITHUB_ENV
+          echo "EOF" >> $env:GITHUB_ENV
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.run_number }}
+          body: ${{ env.COMMIT_MESSAGE }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./dist/DNS_Changer.zip
+          asset_name: DNS_Changer.zip
+          asset_content_type: application/zip
