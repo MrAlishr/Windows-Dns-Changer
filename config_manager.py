@@ -9,13 +9,13 @@ def load_config(file_path='dns_config.json'):
         # Default DNS settings
         return {
             'Shecan': ('178.22.122.100', '185.51.200.2'),
-            'HostIran': ('172.29.2.100', '172.29.0.100'),
             'Begzar': ('185.55.226.26', '185.55.225.25'),
             'Shatel': ('85.15.1.14', '85.15.1.15'),
             'Electro': ('78.157.42.101', '78.157.42.100'),
             'Radar': ('10.202.10.10', '10.202.10.11'),
             '403': ('10.202.10.202', '10.202.10.202')
         }
+
 
 def save_config(config, file_path='dns_config.json'):
     with open(file_path, 'w') as file:
