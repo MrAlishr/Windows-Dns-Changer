@@ -1,3 +1,14 @@
+#  /*******************************************************************************
+#   *
+#   *  * Copyright (c)  2024.
+#   *  * All Credits Goes to MrAlishr
+#   *  * Email : Alishariatirad@gmail.com
+#   *  * Github: github.com/MrAlishr
+#   *  * Telegram : Alishrr
+#   *  *
+#   *
+#   ******************************************************************************/
+
 import json
 
 
