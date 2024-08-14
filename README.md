@@ -1,7 +1,7 @@
 # Windows-Dns-Changer
 
 ![Python](https://img.shields.io/badge/python-3.x-blue.svg)
-
+![Screen](assets/screen.png)
 ## Overview
 
 **Windows-Dns-Changer** is a simple Python application designed to automatically change the DNS settings on a Windows
