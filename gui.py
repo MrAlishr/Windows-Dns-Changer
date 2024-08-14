@@ -1,9 +1,21 @@
+#  /*******************************************************************************
+#   *
+#   *  * Copyright (c)  2024.
+#   *  * All Credits Goes to MrAlishr
+#   *  * Email : Alishariatirad@gmail.com
+#   *  * Github: github.com/MrAlishr
+#   *  * Telegram : Alishrr
+#   *  *
+#   *
+#   ******************************************************************************/
+
 import os
 import sys
 import tkinter as tk
 from tkinter import simpledialog, messagebox, PhotoImage
-from dns_manager import get_active_adapter, set_dns, unset_dns
+
 from config_manager import load_config, save_config
+from dns_manager import get_active_adapter, set_dns, unset_dns, async_ping_dns
 
 
 def resource_path(relative_path):
@@ -22,27 +34,38 @@ def load_resources():
 
 
 def create_gui_elements(window):
-    """ Create the GUI elements and place them in the window using grid layout """
-    bg_label = tk.Label(window, image=bg_image)
-    bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+    """ Create GUI elements with improved styling """
+    window.title("DNS Changer")
+    config = load_config()  # Load DNS configurations
 
-    config = load_config()
     row_num = 0
     for key, value in config.items():
-        btn = tk.Button(window, text=f"{key}: {value[0]}, {value[1]}", image=button_image, compound="center",
-                        command=lambda key=key: update_dns_settings(key))
+        btn_text = f"{key}: {value[0]}, {value[1]}"
+        btn = tk.Button(window, text=btn_text, font=('Helvetica', 12, 'bold'), pady=10, background='pale green')
         btn.grid(row=row_num, column=0, sticky="ew", padx=10, pady=5)
         window.grid_rowconfigure(row_num, weight=1)
+
+        # Update button text asynchronously as pings complete
+        def update_button_text(latency, b=btn, k=key, v=value):
+            b.config(text=f"{k}: {v[0]}, {v[1]} - Latency: {latency}")
+
+        async_ping_dns(value[0],
+                       lambda latency, b=btn, k=key, v=value: window.after(0, update_button_text, latency, b, k, v))
+
         row_num += 1
 
-    add_button = tk.Button(window, text="Add DNS Profile", command=add_dns_profile, highlightbackground='green',
-                           foreground='white')
+    # Add DNS Profile button
+    add_button = tk.Button(window, text="Add DNS Profile", command=add_dns_profile,
+                           highlightbackground='green', foreground='white', background='cyan',
+                           font=('Helvetica', 12, 'bold'), pady=10)
     add_button.grid(row=row_num, column=0, sticky="ew", padx=10, pady=5)
     window.grid_rowconfigure(row_num, weight=1)
     row_num += 1
 
+    # Unset DNS button
     unset_button = tk.Button(window, text="Unset DNS", command=lambda: update_dns_settings('unset'),
-                             highlightbackground='red', foreground='white')
+                             highlightbackground='green', foreground='white', background='cyan',
+                             font=('Helvetica', 12, 'bold'), pady=10)
     unset_button.grid(row=row_num, column=0, sticky="ew", padx=10, pady=5)
     window.grid_rowconfigure(row_num, weight=1)
 
@@ -51,18 +74,15 @@ def create_gui_elements(window):
 
 def update_dns_settings(choice):
     """ Update the DNS settings based on user choice """
-    config = load_config()
     adapter = get_active_adapter()
     if adapter:
-        if choice in config:
-            primary, secondary = config[choice]
-            result = set_dns(adapter, primary, secondary)
-            messagebox.showinfo("Success", f"DNS set to {primary} and {secondary}\n{result}")
-        elif choice == 'unset':
+        if choice == 'unset':
             result = unset_dns(adapter)
             messagebox.showinfo("Success", "DNS has been unset.\n" + result)
         else:
-            messagebox.showerror("Error", "Invalid choice")
+            primary, secondary = load_config()[choice]
+            result = set_dns(adapter, primary, secondary)
+            messagebox.showinfo("Success", f"DNS set to {primary} and {secondary}\n{result}")
     else:
         messagebox.showerror("Error", "No active network adapter found")
 
@@ -95,8 +115,22 @@ def refresh_gui(window):
 def create_gui():
     """ Main function to create GUI window """
     window = tk.Tk()
-    load_resources()  # Load resources dynamically
     window.title("DNS Changer")
+
+    # Load window to get dimensions
+    window.update_idletasks()  # Updates the window so you get correct info
+    width = window.winfo_width()
+    height = window.winfo_height()
+    # Get the screen dimensions
+    screen_width = window.winfo_screenwidth()
+    screen_height = window.winfo_screenheight()
+    # Calculate the center coordinates
+    x = int((screen_width / 2) - (width / 2))
+    y = int((screen_height / 2) - (height / 2))
+
+    # Set the geometry of tkinter frame
+    window.geometry(f'+{x}+{y}')
+
     create_gui_elements(window)
     window.mainloop()
 
