@@ -10,57 +10,50 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.x'
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-    - name: Build with PyInstaller
-      run: |
-        pyinstaller --onefile --windowed --icon=assets\app.ico --add-data "assets;assets" --name "DNS Changer" gui.py
+      - name: Build with PyInstaller
+        run: |
+          pyinstaller --onefile --windowed --icon=assets\app.ico --add-data "assets;assets" --name "DNS Changer" gui.py
 
-    - name: Package Application
-      run: |
-        mkdir package
-        Move-Item "dist/DNS Changer.exe" "package/DNS Changer.exe"
-        Compress-Archive -Path package -DestinationPath "package/DNS_Changer.zip"
+      - name: Create Package Directory
+        run: mkdir package
 
-    - name: Upload Build Artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: DNS-Changer-Package
-        path: package/DNS_Changer.zip
+      - name: Package Application
+        run: |
+          Compress-Archive -Path "dist/*" -DestinationPath "package/DNS_Changer.zip"
 
-  release:
-    needs: build
-    runs-on: windows-latest
-
-    steps:
-      - uses: actions/checkout@v3 # Ensure this is included to have .git available
-
-      - name: Download Build Artifact
-        uses: actions/download-artifact@v3
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v3
         with:
           name: DNS-Changer-Package
-          path: dist
+          path: package/DNS_Changer.zip
 
-      - name: Get Last Commit Message
-        id: get_commit
-        shell: pwsh
-        run: |
-          $commit_message = git log -1 --pretty=%B
-          echo "COMMIT_MESSAGE<<EOF" >> $env:GITHUB_ENV
-          echo "$commit_message" >> $env:GITHUB_ENV
-          echo "EOF" >> $env:GITHUB_ENV
+  make_release:
+    needs: build
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      version: ${{ steps.get_version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Get Version
+        id: get_version
+        run: echo "::set-output name=version::v$(date +%Y%m%d%H%M%S)"
 
       - name: Create Release
         id: create_release
@@ -68,18 +61,27 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.run_number }}
-          body: ${{ env.COMMIT_MESSAGE }}
+          tag_name: ${{ steps.get_version.outputs.version }}
+          release_name: Release ${{ steps.get_version.outputs.version }}
           draft: false
           prerelease: false
+
+  upload_assets:
+    needs: make_release
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: DNS-Changer-Package
+          path: dist
 
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./dist/DNS_Changer.zip
-          asset_name: DNS_Changer.zip
+          upload_url: ${{ needs.make_release.outputs.upload_url }}
+          asset_path: "./dist/DNS_Changer.zip"
+          asset_name: "DNS_Changer.zip"
           asset_content_type: application/zip
